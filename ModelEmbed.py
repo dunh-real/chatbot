@@ -1,7 +1,7 @@
-from sentence_transformers import SentenceTransformer
-from transformers import AutoModelForMaskedLM, AutoTokenizer
 import os
 import torch
+from sentence_transformers import SentenceTransformer
+from transformers import AutoModelForMaskedLM, AutoTokenizer
 
 # Model Name
 DENSE_MODEL_NAME = "BAAI/bge-m3"
@@ -11,7 +11,7 @@ SPARSE_MODEL_NAME = "prithivida/Splade_PP_en_v1"
 MODEL_CACHE_FOLDER = os.path.join(os.path.dirname(__file__), "models_cache")
 os.makedirs(MODEL_CACHE_FOLDER, exist_ok=True)
 
-# Make embedding dense-vector
+# Create embedding dense-vector
 class LocalDenseEmbedding:
     def __init__(self, model_name=DENSE_MODEL_NAME, cache_folder=MODEL_CACHE_FOLDER):
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -22,12 +22,19 @@ class LocalDenseEmbedding:
             cache_folder=cache_folder
         )
 
+    # Processing query input
+    def get_dense_vector(self, query: str):
+        embedding = self.model.encode(query, normalize_embeddings=True)
+
+        return embedding.tolist()
+
+    # Processing enterprise docs
     def embed(self, texts: list[str]): 
         embeddings = self.model.encode(texts, convert_to_numpy=True, show_progress_bar=True)
 
         return embeddings.tolist()
 
-# Make embedding sparse-vector
+# Create embedding sparse-vector
 class LocalSparseEmbedding:
     def __init__(self, model_name=SPARSE_MODEL_NAME, cache_folder=MODEL_CACHE_FOLDER):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -36,6 +43,24 @@ class LocalSparseEmbedding:
         self.model.to(self.device) 
         self.model.eval() 
 
+    # Processing query input
+    def get_sparse_vector(self, query: str):
+        tokens = self.tokenizer(query, return_tensors="pt")
+        
+        with torch.no_grad():
+            output = self.model(**tokens)
+        
+        logits = output.logits
+        weights = torch.max(torch.log(1 + torch.relu(logits)), dim=1).values.squeeze()
+        cols = weights.nonzero().squeeze().cpu().tolist()
+        weights = weights[cols].cpu().tolist()
+        
+        return {
+            "indices": cols,
+            "values": weights
+        }
+
+    # Processing enterprise docs
     def embed(self, texts: list[str]):
         results = []
         

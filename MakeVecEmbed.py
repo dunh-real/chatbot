@@ -1,5 +1,6 @@
-import torch
 import uuid
+import os
+from pathlib import Path
 from ModelEmbed import LocalDenseEmbedding, LocalSparseEmbedding
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from qdrant_client import QdrantClient, models
@@ -7,10 +8,14 @@ from qdrant_client.http.models import Distance, VectorParams, SparseVectorParams
 
 # Setup DB
 QDRANT_URL = "http://localhost:6333" 
-COLLECTION_NAME = "enterprise_docs" 
+COLLECTION_NAME = "enterprise_documents" 
 DENSE_VECTOR_NAME = "dense-vector" 
 SPARSE_VECTOR_NAME = "sparse-vector" 
 DENSE_DIMENSION = 1024 
+
+# Setup markdown file path
+PATH_MD_DOCUMENT = "./md_file"
+md_files = list(Path(PATH_MD_DOCUMENT).glob("*.md"))
 
 def process_markdown_file(file_path: str):
     try:
@@ -35,9 +40,11 @@ def process_markdown_file(file_path: str):
 
     texts_to_embed = [chunk.page_content for chunk in final_chunks]
 
+    # Dense vector
     dense_embedder = LocalDenseEmbedding()
     dense_vectors = dense_embedder.embed(texts_to_embed)
     
+    # Sparse vector
     sparse_embedder = LocalSparseEmbedding()
     sparse_vectors = sparse_embedder.embed(texts_to_embed)
 
@@ -49,7 +56,7 @@ def init_qdrant_collection(client: QdrantClient):
         client.create_collection(
             collection_name=COLLECTION_NAME,
 
-            # Setup dense - vector
+            # Create dense - vector
             vectors_config={
                 DENSE_VECTOR_NAME: VectorParams(
                     size=DENSE_DIMENSION,
@@ -57,7 +64,7 @@ def init_qdrant_collection(client: QdrantClient):
                 )
             },
 
-            # Setup sparse - vector
+            # Create sparse - vector
             sparse_vectors_config={
                 SPARSE_VECTOR_NAME: SparseVectorParams(
                     index=SparseIndexParams(
@@ -67,7 +74,7 @@ def init_qdrant_collection(client: QdrantClient):
             }
         )
         
-        # Create payload
+        # Create payload (meta data)
         client.create_payload_index(
             collection_name=COLLECTION_NAME,
             field_name="tenant_id",
@@ -88,7 +95,7 @@ def upload_data_to_qdrant(chunks, dense_vecs, sparse_vecs, tenant_id="demo_tenan
         payload = chunk.metadata.copy() 
         payload["page_content"] = chunk.page_content 
         payload["tenant_id"] = tenant_id 
-        payload["source_file"] = file_path
+        payload["file_name"] = os.path.basename(md_file)
 
         # Tạo PointStruct 
         point = models.PointStruct(
@@ -108,23 +115,23 @@ def upload_data_to_qdrant(chunks, dense_vecs, sparse_vecs, tenant_id="demo_tenan
     )
 
 if __name__ == "__main__":
-    file_path = "./01.QT.KD_Quy trinh xem xet yeu cau khach hang.md"
+    for md_file in md_files:
 
-    client = QdrantClient(url=QDRANT_URL)
+        client = QdrantClient(url=QDRANT_URL)
 
-    CURRENT_TENANT_ID = "A_company"
+        CURRENT_TENANT_ID = "VGP"
 
-    chunks, dense_vecs, sparse_vecs = process_markdown_file(file_path)
+        chunks, dense_vecs, sparse_vecs = process_markdown_file(md_file)
 
-    # Push data to Qdrant
-    if chunks and dense_vecs and sparse_vecs:
-        upload_data_to_qdrant(
-            chunks=chunks,
-            dense_vecs=dense_vecs,
-            sparse_vecs=sparse_vecs,
-            tenant_id=CURRENT_TENANT_ID
-        )
-    else:
-        print("\nCó lỗi trong quá trình xử lý file. Không thể upload.")
+        # Push data to Qdrant
+        if chunks and dense_vecs and sparse_vecs:
+            upload_data_to_qdrant(
+                chunks=chunks,
+                dense_vecs=dense_vecs,
+                sparse_vecs=sparse_vecs,
+                tenant_id=CURRENT_TENANT_ID
+            )
+        else:
+            print("\nCó lỗi trong quá trình xử lý file. Không thể upload.")
         
         
