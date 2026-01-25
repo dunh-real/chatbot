@@ -12,7 +12,7 @@ retrieval/qdrant_service.py
 
 Convert markdown: test_converter.py
 
-Phẩn hồi LLM: test_llm_answer.py
+Phản hồi LLM: test_llm_answer.py
 
 Add database: test_qdrant_service.py
 
