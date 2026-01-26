@@ -9,12 +9,9 @@ Step 1: Reformat the input markdown file to be a well organized markdown documen
 Step 2: Chunking
 Step 3: Convert chunks into embedding vectors
 """
-import re
-from pathlib import Path
-from typing import List, Tuple
+
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-import numpy as np
 
 
 class Data_ETL():
