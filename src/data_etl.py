@@ -14,7 +14,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-class Data_ETL():
+class Data_ETL:
     def __init__(self, input_path):
         self.input_path = input_path
         self.markdown_file = self.load_markdown_file(input_path)

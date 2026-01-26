@@ -1,7 +1,7 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
 
-class Qdrant_database():
+class Qdrant_database:
     def __init__(self, collection_name, record_size):
         self.collection_name = collection_name
         self.record_size = record_size
